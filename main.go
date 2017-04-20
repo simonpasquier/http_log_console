@@ -39,11 +39,11 @@ type Logger interface {
 
 func main() {
 	var (
-		filename = flag.String("f", "", "HTTP log file to monitor")
-		interval = flag.Int("i", 10, "Interval at which statistics should be emitted")
-		window = flag.Int("w", 120, "Window of time")
+		filename  = flag.String("f", "", "HTTP log file to monitor")
+		interval  = flag.Int("i", 10, "Interval at which statistics should be emitted")
+		window    = flag.Int("w", 120, "Window of time")
 		threshold = flag.Int("t", 1, "Hits threshold")
-		logger = log.New(os.Stderr, "", log.LstdFlags)
+		logger    = log.New(os.Stderr, "", log.LstdFlags)
 	)
 	flag.Parse()
 	if *filename == "" {

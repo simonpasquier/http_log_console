@@ -42,42 +42,43 @@ type StatsWorker struct {
 // the following code comes from https://groups.google.com/d/msg/golang-nuts/FT7cjmcL7gw/Gj4_aEsE_IsJ
 // A data structure to hold a key/value pair.
 type Pair struct {
-  Key string
-  Value int
+	Key   string
+	Value int
 }
 
 // A slice of Pairs that implements sort.Interface to sort by Value.
 type PairList []Pair
-func (p PairList) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
-func (p PairList) Len() int { return len(p) }
+
+func (p PairList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p PairList) Len() int           { return len(p) }
 func (p PairList) Less(i, j int) bool { return p[i].Value < p[j].Value }
 
 // A function to turn a map into a PairList, then sort and return it.
 func sortMapByValue(m map[string]int) PairList {
-   p := make(PairList, len(m))
-   i := 0
-   for k, v := range m {
-      p[i] = Pair{k, v}
-   }
-   sort.Sort(p)
-   return p
+	p := make(PairList, len(m))
+	i := 0
+	for k, v := range m {
+		p[i] = Pair{k, v}
+	}
+	sort.Sort(p)
+	return p
 }
 
-func NewStatsWorker(interval int, done <-chan struct{}, logger Logger) (*StatsWorker) {
+func NewStatsWorker(interval int, done <-chan struct{}, logger Logger) *StatsWorker {
 	in := make(chan *Hit)
 	out := make(chan string)
 
 	s := StatsWorker{
-		logger: logger,
+		logger:      logger,
 		sectionHits: make(map[string]int),
-		statusHits: make([]int, 6),
-		interval: interval,
-		in: in,
-		out: out,
-		done: done,
+		statusHits:  make([]int, 6),
+		interval:    interval,
+		in:          in,
+		out:         out,
+		done:        done,
 	}
 
-	go func(){
+	go func() {
 		defer close(out)
 		ticker := time.NewTicker(time.Second * time.Duration(s.interval))
 		defer ticker.Stop()
@@ -106,7 +107,7 @@ func NewStatsWorker(interval int, done <-chan struct{}, logger Logger) (*StatsWo
 				}
 				out <- fmt.Sprintf("'other': %d hits", s.statusHits[0])
 				s.statusHits[0] = 0
-				out <- fmt.Sprintf("total: %d hits (%.02f/sec)", s.totalHits, float64(s.totalHits / s.interval))
+				out <- fmt.Sprintf("total: %d hits (%.02f/sec)", s.totalHits, float64(s.totalHits/s.interval))
 				s.totalHits = 0
 			case <-done:
 				s.logger.Println("Exiting StatsWorker")
@@ -120,16 +121,16 @@ func NewStatsWorker(interval int, done <-chan struct{}, logger Logger) (*StatsWo
 
 // CircularCounter counts values over a period in 1-second buckets
 type CircularCounter struct {
-	buckets []int
+	buckets      []int
 	currentIndex int
-	currentTime uint64
+	currentTime  uint64
 }
 
-func NewCircularCounter(window int) (*CircularCounter) {
+func NewCircularCounter(window int) *CircularCounter {
 	return &CircularCounter{
-		buckets: make([]int, window),
+		buckets:      make([]int, window),
 		currentIndex: 0,
-		currentTime: atime.NanoTime(),
+		currentTime:  atime.NanoTime(),
 	}
 }
 
@@ -147,7 +148,7 @@ func (c *CircularCounter) Forward() {
 
 	newIndex := (c.currentIndex + steps) % len(c.buckets)
 	for i := c.currentIndex + 1; i <= newIndex; i++ {
-		c.buckets[i % len(c.buckets)] = 0
+		c.buckets[i%len(c.buckets)] = 0
 	}
 	c.currentIndex = newIndex
 	c.currentTime = now
@@ -186,21 +187,21 @@ type AlarmWorker struct {
 	done <-chan struct{}
 }
 
-func NewAlarmWorker(window int, threshold int, done <-chan struct{}, logger Logger) (*AlarmWorker) {
+func NewAlarmWorker(window int, threshold int, done <-chan struct{}, logger Logger) *AlarmWorker {
 	in := make(chan *Hit)
 	out := make(chan string)
 
 	a := AlarmWorker{
-		logger: logger,
-		counter: NewCircularCounter(window),
+		logger:    logger,
+		counter:   NewCircularCounter(window),
 		threshold: threshold,
 		triggered: false,
-		in: in,
-		out: out,
-		done: done,
+		in:        in,
+		out:       out,
+		done:      done,
 	}
 
-	go func(){
+	go func() {
 		defer close(out)
 		ticker := time.NewTicker(time.Second * time.Duration(1))
 		defer ticker.Stop()

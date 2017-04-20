@@ -30,9 +30,9 @@ type LogProcessor struct {
 func NewLogProcessor(filename string, logger Logger) (*LogProcessor, error) {
 	// Skip directly to the end of the file to avoid processing old lines
 	tailConfig := tail.Config{
-		Follow: true,
-		Logger: tail.DiscardingLogger,
-		Location: &tail.SeekInfo{Offset: 0, Whence: os.SEEK_END},
+		Follow:    true,
+		Logger:    tail.DiscardingLogger,
+		Location:  &tail.SeekInfo{Offset: 0, Whence: os.SEEK_END},
 		MustExist: true,
 	}
 	stream, err := tail.TailFile(filename, tailConfig)
@@ -64,9 +64,9 @@ func (l *LogProcessor) Run(out chan<- *Hit, done <-chan struct{}) error {
 			}
 			out <- &Hit{
 				timestamp: timestamp,
-				uri: matches[3],
-				method: matches[2],
-				status: status,
+				uri:       matches[3],
+				method:    matches[2],
+				status:    status,
 			}
 		case <-done:
 			return nil
