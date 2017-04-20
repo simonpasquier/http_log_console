@@ -12,6 +12,7 @@ To-Do
   another one for parsing the payload.
 * Implement a generic pipeline system to have an arbitrary number of workers
   consuming the same input stream.
+* Have workers return structures instead of plain strings.
 
 License
 =======
