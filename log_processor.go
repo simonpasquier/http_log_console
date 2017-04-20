@@ -12,7 +12,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"regexp"
 	"strconv"
@@ -23,11 +22,12 @@ import (
 
 // LogProcessor watches a file stream
 type LogProcessor struct {
+	logger Logger
 	stream *tail.Tail
 }
 
 // Returns a new instance of LogProcessor
-func NewLogProcessor(filename string) (*LogProcessor, error) {
+func NewLogProcessor(filename string, logger Logger) (*LogProcessor, error) {
 	// Skip directly to the end of the file to avoid processing old lines
 	tailConfig := tail.Config{
 		Follow: true,
@@ -39,7 +39,7 @@ func NewLogProcessor(filename string) (*LogProcessor, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &LogProcessor{stream: stream,}, nil
+	return &LogProcessor{stream: stream, logger: logger}, nil
 }
 
 // Reads the HTTP log lines and sends Hit values to the out channel
@@ -52,14 +52,14 @@ func (l *LogProcessor) Run(out chan<- *Hit, done <-chan struct{}) error {
 		case line := <-l.stream.Lines:
 			matches := clf.FindStringSubmatch(line.Text)
 			if matches == nil {
-				fmt.Printf("no match found for %s", line.Text)
+				l.logger.Printf("no match found for %s", line.Text)
 				continue
 			}
 			// TODO: configurable time format
 			status, _ := strconv.Atoi(matches[4])
 			timestamp, err := time.Parse("02/Jan/2006:15:04:05 -0700", matches[1])
 			if err != nil {
-				fmt.Println(err)
+				l.logger.Println(err)
 				continue
 			}
 			out <- &Hit{

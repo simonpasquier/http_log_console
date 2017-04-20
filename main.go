@@ -13,7 +13,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"time"
@@ -31,15 +31,23 @@ type Hit struct {
 	status int
 }
 
+type Logger interface {
+	Printf(string, ...interface{})
+	Println(...interface{})
+	Fatalln(...interface{})
+}
+
 func main() {
 	var (
 		filename = flag.String("f", "", "HTTP log file to monitor")
 		interval = flag.Int("i", 10, "Interval at which statistics should be emitted")
+		window = flag.Int("w", 120, "Window of time")
+		threshold = flag.Int("t", 1, "Hits threshold")
+		logger = log.New(os.Stderr, "", log.LstdFlags)
 	)
 	flag.Parse()
 	if *filename == "" {
-		fmt.Println("-f argument is missing")
-		return
+		log.Fatalln("-f argument is missing")
 	}
 
 	done := make(chan struct{})
@@ -47,16 +55,14 @@ func main() {
 	signal.Notify(sigs, os.Interrupt)
 	go func() {
 		sig := <-sigs
-		fmt.Println("")
-		fmt.Println("Caught signal ", sig)
+		logger.Println("Caught signal ", sig)
 		// closing the done channel will tear down all the goroutines
 		close(done)
 	}()
 
-	logProcessor, err := NewLogProcessor(*filename)
+	logProcessor, err := NewLogProcessor(*filename, logger)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		logger.Fatalln(err)
 	}
 
 	// kick off the processing of the logs
@@ -64,8 +70,8 @@ func main() {
 	go logProcessor.Run(hits, done)
 
 	// dispatch the hits to all the workers
-	statsWorker := NewStatsWorker(*interval, done)
-	alarmWorker := NewAlarmWorker(20, 1, done)
+	statsWorker := NewStatsWorker(*interval, done, logger)
+	alarmWorker := NewAlarmWorker(*window, *threshold, done, logger)
 	go func() {
 		for hit := range hits {
 			statsWorker.in <- hit
@@ -76,12 +82,12 @@ func main() {
 	// and finally collect and display the statistics
 	go func() {
 		for out := range statsWorker.out {
-			fmt.Println(out)
+			logger.Println(out)
 		}
 	}()
 	go func() {
 		for out := range alarmWorker.out {
-			fmt.Println(out)
+			logger.Println(out)
 		}
 	}()
 

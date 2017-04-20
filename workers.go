@@ -22,6 +22,7 @@ import (
 
 // StatsWorker aggregates the number of hits over the given interval
 type StatsWorker struct {
+	logger Logger
 	// total number of hits
 	totalHits int
 	// the number of hits broken down by status code
@@ -62,11 +63,12 @@ func sortMapByValue(m map[string]int) PairList {
    return p
 }
 
-func NewStatsWorker(interval int, done <-chan struct{}) (*StatsWorker) {
+func NewStatsWorker(interval int, done <-chan struct{}, logger Logger) (*StatsWorker) {
 	in := make(chan *Hit)
 	out := make(chan string)
 
 	s := StatsWorker{
+		logger: logger,
 		sectionHits: make(map[string]int),
 		statusHits: make([]int, 6),
 		interval: interval,
@@ -107,6 +109,7 @@ func NewStatsWorker(interval int, done <-chan struct{}) (*StatsWorker) {
 				out <- fmt.Sprintf("total: %d hits (%.02f/sec)", s.totalHits, float64(s.totalHits / s.interval))
 				s.totalHits = 0
 			case <-done:
+				s.logger.Println("Exiting StatsWorker")
 				break
 			}
 		}
@@ -168,6 +171,7 @@ func (c *CircularCounter) Sum() int {
 
 // AlertWorker detects if the hits count reaches a predefined threshold
 type AlarmWorker struct {
+	logger Logger
 	// the number of hits per second
 	counter *CircularCounter
 	// threshold value
@@ -182,11 +186,12 @@ type AlarmWorker struct {
 	done <-chan struct{}
 }
 
-func NewAlarmWorker(window int, threshold int, done <-chan struct{}) (*AlarmWorker) {
+func NewAlarmWorker(window int, threshold int, done <-chan struct{}, logger Logger) (*AlarmWorker) {
 	in := make(chan *Hit)
 	out := make(chan string)
 
 	a := AlarmWorker{
+		logger: logger,
 		counter: NewCircularCounter(window),
 		threshold: threshold,
 		triggered: false,
@@ -214,6 +219,7 @@ func NewAlarmWorker(window int, threshold int, done <-chan struct{}) (*AlarmWork
 					a.triggered = false
 				}
 			case <-done:
+				a.logger.Println("Exiting AlarmWorker")
 				break
 			}
 		}
