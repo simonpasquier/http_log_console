@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/simonpasquier/http_log_console/pkg/atime"
 	"github.com/hpcloud/tail"
 )
 
@@ -133,10 +134,6 @@ func sortMapByValue(m map[string]int) PairList {
    return p
 }
 
-func computeRate(v int, interval int) {
-
-}
-
 func NewStatsWorker(interval int, done <-chan struct{}) (*StatsWorker) {
 	in := make(chan *Hit)
 	out := make(chan string)
@@ -190,6 +187,114 @@ func NewStatsWorker(interval int, done <-chan struct{}) (*StatsWorker) {
 	return &s
 }
 
+// CircularCounter counts values over a period in 1-second buckets
+type CircularCounter struct {
+	buckets []int
+	currentIndex int
+	currentTime uint64
+}
+
+func NewCircularCounter(window int) (*CircularCounter) {
+	return &CircularCounter{
+		buckets: make([]int, window),
+		currentIndex: 0,
+		currentTime: atime.NanoTime(),
+	}
+}
+
+// Move the index forward to the current time
+func (c *CircularCounter) Forward() {
+	now := atime.NanoTime()
+	steps := int((now - c.currentTime) / uint64(time.Second))
+	if steps <= 0 {
+		return
+	}
+
+	if steps > len(c.buckets) {
+		steps = len(c.buckets)
+	}
+
+	newIndex := (c.currentIndex + steps) % len(c.buckets)
+	for i := c.currentIndex + 1; i <= newIndex; i++ {
+		c.buckets[i % len(c.buckets)] = 0
+	}
+	c.currentIndex = newIndex
+	c.currentTime = now
+}
+
+// Add a value
+func (c *CircularCounter) Add(v int) {
+	c.Forward()
+	c.buckets[c.currentIndex] += v
+}
+
+// Sum all values
+func (c *CircularCounter) Sum() int {
+	c.Forward()
+	sum := 0
+	for _, v := range c.buckets {
+		sum += v
+	}
+	return sum
+}
+
+// AlertWorker detects if the hits count reaches a predefined threshold
+type AlarmWorker struct {
+	// the number of hits per second
+	counter *CircularCounter
+	// threshold value
+	threshold int
+	// whether the alert has been triggered or not
+	triggered bool
+	// channel for receiving the Hit values
+	in chan *Hit
+	// channel for sending out the alerts
+	out chan string
+	// channel indicating that the application is done
+	done <-chan struct{}
+}
+
+func NewAlarmWorker(window int, threshold int, done <-chan struct{}) (*AlarmWorker) {
+	in := make(chan *Hit)
+	out := make(chan string)
+
+	a := AlarmWorker{
+		counter: NewCircularCounter(window),
+		threshold: threshold,
+		triggered: false,
+		in: in,
+		out: out,
+		done: done,
+	}
+
+	go func(){
+		defer close(out)
+		ticker := time.NewTicker(time.Second * time.Duration(1))
+		defer ticker.Stop()
+		for {
+			select {
+			case <-a.in:
+				a.counter.Add(1)
+			case <-ticker.C:
+				// clean up buffer
+				sum := a.counter.Sum()
+				if !a.triggered && sum >= a.threshold {
+					out <- fmt.Sprintf("High traffic generated an alert - hits = %d, triggered at %s", sum, time.Now())
+					a.triggered = true
+				} else if a.triggered && sum < a.threshold {
+					out <- fmt.Sprintf("Traffic went back to normal - hits = %d, triggered at %s", sum, time.Now())
+					a.triggered = false
+				}
+				fmt.Println(a.counter.buckets)
+			case <-done:
+				break
+			}
+		}
+	}()
+
+	return &a
+}
+
 func main() {
 	var (
 		filename = flag.String("f", "", "HTTP log file to monitor")
@@ -224,15 +329,22 @@ func main() {
 
 	// dispatch the hits to all the workers
 	statsWorker := NewStatsWorker(*interval, done)
+	alarmWorker := NewAlarmWorker(20, 1, done)
 	go func() {
 		for hit := range hits {
 			statsWorker.in <- hit
+			alarmWorker.in <- hit
 		}
 	}()
 
 	// and finally collect and display the statistics
 	go func() {
 		for out := range statsWorker.out {
+			fmt.Println(out)
+		}
+	}()
+	go func() {
+		for out := range alarmWorker.out {
 			fmt.Println(out)
 		}
 	}()
