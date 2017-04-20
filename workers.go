@@ -34,7 +34,7 @@ type StatsWorker struct {
 	// channel for receiving the Hit values
 	in chan *Hit
 	// channel for sending out the statistics
-	out chan string
+	out chan []string
 	// channel indicating that the application is done
 	done <-chan struct{}
 }
@@ -66,7 +66,7 @@ func sortMapByValue(m map[string]int) PairList {
 
 func NewStatsWorker(interval int, done <-chan struct{}, logger Logger) *StatsWorker {
 	in := make(chan *Hit)
-	out := make(chan string)
+	out := make(chan []string)
 
 	s := StatsWorker{
 		logger:      logger,
@@ -97,21 +97,23 @@ func NewStatsWorker(interval int, done <-chan struct{}, logger Logger) *StatsWor
 				}
 				s.totalHits += 1
 			case <-ticker.C:
+				stats := make([]string, 0)
 				for _, p := range sortMapByValue(s.sectionHits) {
-					out <- fmt.Sprintf("'%s' section: %d hits", p.Key, p.Value)
+					stats = append(stats, fmt.Sprintf("'%s' section: %d hits", p.Key, p.Value))
 					delete(s.sectionHits, p.Key)
 				}
 				for i, v := range s.statusHits[1:] {
-					out <- fmt.Sprintf("'%dxx': %d hits", i, v)
+					stats = append(stats, fmt.Sprintf("'%dxx': %d hits", i+1, v))
 					s.statusHits[i] = 0
 				}
-				out <- fmt.Sprintf("'other': %d hits", s.statusHits[0])
+				stats = append(stats, fmt.Sprintf("'other': %d hits", s.statusHits[0]))
 				s.statusHits[0] = 0
-				out <- fmt.Sprintf("total: %d hits (%.02f/sec)", s.totalHits, float64(s.totalHits/s.interval))
+				stats = append(stats, fmt.Sprintf("total: %d hits (%.02f/sec)", s.totalHits, float64(s.totalHits)/float64(s.interval)))
 				s.totalHits = 0
+				out <- stats
 			case <-done:
 				s.logger.Println("Exiting StatsWorker")
-				break
+				return
 			}
 		}
 	}()
@@ -213,15 +215,21 @@ func NewAlarmWorker(window int, threshold int, done <-chan struct{}, logger Logg
 				// clean up buffer
 				sum := a.counter.Sum()
 				if !a.triggered && sum >= a.threshold {
-					out <- fmt.Sprintf("High traffic generated an alert - hits = %d, triggered at %s", sum, time.Now())
+					out <- fmt.Sprintf(
+						"High traffic generated an alert - hits = %d, triggered at %s",
+						sum,
+						time.Now().Format(time.RFC3339))
 					a.triggered = true
 				} else if a.triggered && sum < a.threshold {
-					out <- fmt.Sprintf("Traffic went back to normal - hits = %d, triggered at %s", sum, time.Now())
+					out <- fmt.Sprintf(
+						"Traffic went back to normal - hits = %d, triggered at %s",
+						sum,
+						time.Now().Format(time.RFC3339))
 					a.triggered = false
 				}
 			case <-done:
 				a.logger.Println("Exiting AlarmWorker")
-				break
+				return
 			}
 		}
 	}()

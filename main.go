@@ -41,8 +41,8 @@ func main() {
 	var (
 		filename  = flag.String("f", "", "HTTP log file to monitor")
 		interval  = flag.Int("i", 10, "Interval at which statistics should be emitted")
-		window    = flag.Int("w", 120, "Window of time")
-		threshold = flag.Int("t", 1, "Hits threshold")
+		window    = flag.Int("w", 120, "Alarm evaluation period")
+		threshold = flag.Int("t", 100, "Alarm threshold")
 		logger    = log.New(os.Stderr, "", log.LstdFlags)
 	)
 	flag.Parse()
@@ -79,17 +79,8 @@ func main() {
 		}
 	}()
 
-	// and finally collect and display the statistics
-	go func() {
-		for out := range statsWorker.out {
-			logger.Println(out)
-		}
-	}()
-	go func() {
-		for out := range alarmWorker.out {
-			logger.Println(out)
-		}
-	}()
+	// finally display the UI
+	go DrawUi(statsWorker.out, alarmWorker.out, done, logger)
 
 	// wait forever
 	<-done
