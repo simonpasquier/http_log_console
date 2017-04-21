@@ -15,11 +15,11 @@ import (
 	"io/ioutil"
 	"log"
 	"strings"
-	"time"
 	"testing"
+	"time"
 )
 
-type FakeClocker struct{
+type FakeClocker struct {
 	now uint64
 }
 
@@ -89,7 +89,7 @@ func TestAlarmWorker(t *testing.T) {
 
 	worker.in <- &Hit{}
 	select {
-	case alert:=<-worker.out:
+	case alert := <-worker.out:
 		if !strings.Contains(alert, "High traffic") {
 			t.Fatalf("Expected alert with 'High traffic' but got '%s'", alert)
 		}
@@ -99,7 +99,7 @@ func TestAlarmWorker(t *testing.T) {
 	}
 
 	select {
-	case alert:=<-worker.out:
+	case alert := <-worker.out:
 		if !strings.Contains(alert, "back to normal") {
 			t.Fatalf("Expected alert with 'back to normal' but got '%s'", alert)
 		}

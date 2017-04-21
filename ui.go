@@ -48,10 +48,10 @@ func DrawUi(stat chan []string, alert chan string, done chan struct{}, logger Lo
 	update := func() {
 		for {
 			select {
-			case stats:=<-stat:
+			case stats := <-stat:
 				sl.Items = stats
 				ui.Render(sl, al)
-			case alert:=<-alert:
+			case alert := <-alert:
 				al.Items = append([]string{alert}, al.Items...)
 				ui.Render(sl, al)
 			case <-done:

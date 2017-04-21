@@ -125,7 +125,7 @@ type Clocker interface {
 	Now() uint64
 }
 
-type MonoClocker struct {}
+type MonoClocker struct{}
 
 func (MonoClocker) Now() uint64 {
 	return atime.NanoTime()
@@ -164,7 +164,7 @@ func (c *CircularCounter) Forward() {
 	}
 
 	start := c.currentIndex + 1
-	for i := start; i <= start + steps; i++ {
+	for i := start; i <= start+steps; i++ {
 		c.buckets[i%len(c.buckets)] = 0
 	}
 	c.currentIndex = (c.currentIndex + steps) % len(c.buckets)
