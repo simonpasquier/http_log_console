@@ -1,0 +1,63 @@
+{
+	"ImportPath": "github.com/simonpasquier/http_log_console",
+	"GoVersion": "go1.8",
+	"GodepVersion": "v79",
+	"Deps": [
+		{
+			"ImportPath": "github.com/gizak/termui",
+			"Comment": "v2.2.0-17-g78e78f7",
+			"Rev": "78e78f78b98822dcd4bfbf923baec8a65ca76798"
+		},
+		{
+			"ImportPath": "github.com/hpcloud/tail",
+			"Comment": "v1.0.0-9-gfaf842b",
+			"Rev": "faf842bde7ed83bbc3c65a2c454fae39bc29a95f"
+		},
+		{
+			"ImportPath": "github.com/hpcloud/tail/ratelimiter",
+			"Comment": "v1.0.0-9-gfaf842b",
+			"Rev": "faf842bde7ed83bbc3c65a2c454fae39bc29a95f"
+		},
+		{
+			"ImportPath": "github.com/hpcloud/tail/util",
+			"Comment": "v1.0.0-9-gfaf842b",
+			"Rev": "faf842bde7ed83bbc3c65a2c454fae39bc29a95f"
+		},
+		{
+			"ImportPath": "github.com/hpcloud/tail/watch",
+			"Comment": "v1.0.0-9-gfaf842b",
+			"Rev": "faf842bde7ed83bbc3c65a2c454fae39bc29a95f"
+		},
+		{
+			"ImportPath": "github.com/hpcloud/tail/winfile",
+			"Comment": "v1.0.0-9-gfaf842b",
+			"Rev": "faf842bde7ed83bbc3c65a2c454fae39bc29a95f"
+		},
+		{
+			"ImportPath": "github.com/maruel/panicparse/stack",
+			"Rev": "ae43f192cef2add653fe1481a3070ed00a4a6981"
+		},
+		{
+			"ImportPath": "github.com/mattn/go-runewidth",
+			"Comment": "v0.0.2-1-g14207d2",
+			"Rev": "14207d285c6c197daabb5c9793d63e7af9ab2d50"
+		},
+		{
+			"ImportPath": "github.com/mitchellh/go-wordwrap",
+			"Rev": "ad45545899c7b13c020ea92b2072220eefad42b8"
+		},
+		{
+			"ImportPath": "github.com/nsf/termbox-go",
+			"Rev": "7994c181db7761ca3c67a217068cf31826113f5f"
+		},
+		{
+			"ImportPath": "gopkg.in/fsnotify.v1",
+			"Comment": "v1.4.2",
+			"Rev": "629574ca2a5df945712d3079857300b5e4da0236"
+		},
+		{
+			"ImportPath": "gopkg.in/tomb.v1",
+			"Rev": "dd632973f1e7218eb1089048e0798ec9ae7dceb8"
+		}
+	]
+}
