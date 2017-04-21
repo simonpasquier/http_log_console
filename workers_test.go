@@ -12,6 +12,9 @@
 package main
 
 import (
+	"io/ioutil"
+	"log"
+	"strings"
 	"time"
 	"testing"
 )
@@ -67,5 +70,41 @@ func TestCircularCounterSum(t *testing.T) {
 	v = counter.Sum()
 	if v != 0 {
 		t.Fatalf("Expected 0 but got %d", v)
+	}
+}
+
+func TestAlarmWorker(t *testing.T) {
+	logger := log.New(ioutil.Discard, "", log.LstdFlags)
+	done := make(chan struct{})
+	defer close(done)
+	worker := NewAlarmWorker(5, 2, done, logger)
+
+	worker.in <- &Hit{}
+	select {
+	case <-worker.out:
+		t.Fatal("Expected 0 alert but got 1")
+	case <-time.After(2 * time.Second):
+		break
+	}
+
+	worker.in <- &Hit{}
+	select {
+	case alert:=<-worker.out:
+		if !strings.Contains(alert, "High traffic") {
+			t.Fatalf("Expected alert with 'High traffic' but got '%s'", alert)
+		}
+		break
+	case <-time.After(2 * time.Second):
+		t.Fatal("Expected 1 alert but got 0")
+	}
+
+	select {
+	case alert:=<-worker.out:
+		if !strings.Contains(alert, "back to normal") {
+			t.Fatalf("Expected alert with 'back to normal' but got '%s'", alert)
+		}
+		break
+	case <-time.After(4 * time.Second):
+		t.Fatal("Expected 1 alert but got 0")
 	}
 }
