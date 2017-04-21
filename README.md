@@ -5,6 +5,7 @@ Build
 
 ```
 $ go get github.com/tools/godep
+$ godep go test
 $ godep go build
 ```
 
