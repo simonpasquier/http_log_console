@@ -121,24 +121,39 @@ func NewStatsWorker(interval int, done <-chan struct{}, logger Logger) *StatsWor
 	return &s
 }
 
+type Clocker interface {
+	Now() uint64
+}
+
+type MonoClocker struct {}
+
+func (MonoClocker) Now() uint64 {
+	return atime.NanoTime()
+}
+
 // CircularCounter counts values over a period in 1-second buckets
 type CircularCounter struct {
+	clocker      Clocker
 	buckets      []int
 	currentIndex int
 	currentTime  uint64
 }
 
-func NewCircularCounter(window int) *CircularCounter {
+func NewCircularCounter(window int, clocker Clocker) *CircularCounter {
+	if clocker == nil {
+		clocker = MonoClocker{}
+	}
 	return &CircularCounter{
+		clocker:      clocker,
 		buckets:      make([]int, window),
 		currentIndex: 0,
-		currentTime:  atime.NanoTime(),
+		currentTime:  clocker.Now(),
 	}
 }
 
 // Move the index forward to the current time
 func (c *CircularCounter) Forward() {
-	now := atime.NanoTime()
+	now := c.clocker.Now()
 	steps := int((now - c.currentTime) / uint64(time.Second))
 	if steps <= 0 {
 		return
@@ -148,11 +163,11 @@ func (c *CircularCounter) Forward() {
 		steps = len(c.buckets)
 	}
 
-	newIndex := (c.currentIndex + steps) % len(c.buckets)
-	for i := c.currentIndex + 1; i <= newIndex; i++ {
+	start := c.currentIndex + 1
+	for i := start; i <= start + steps; i++ {
 		c.buckets[i%len(c.buckets)] = 0
 	}
-	c.currentIndex = newIndex
+	c.currentIndex = (c.currentIndex + steps) % len(c.buckets)
 	c.currentTime = now
 }
 
@@ -195,7 +210,7 @@ func NewAlarmWorker(window int, threshold int, done <-chan struct{}, logger Logg
 
 	a := AlarmWorker{
 		logger:    logger,
-		counter:   NewCircularCounter(window),
+		counter:   NewCircularCounter(window, nil),
 		threshold: threshold,
 		triggered: false,
 		in:        in,
