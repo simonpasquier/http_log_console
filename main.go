@@ -15,7 +15,6 @@ import (
 	"flag"
 	"log"
 	"os"
-	"os/signal"
 	"time"
 )
 
@@ -51,14 +50,6 @@ func main() {
 	}
 
 	done := make(chan struct{})
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt)
-	go func() {
-		sig := <-sigs
-		logger.Println("Caught signal ", sig)
-		// closing the done channel will tear down all the goroutines
-		close(done)
-	}()
 
 	logProcessor, err := NewLogProcessor(*filename, logger)
 	if err != nil {

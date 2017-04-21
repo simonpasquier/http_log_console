@@ -20,26 +20,10 @@ import (
 	"github.com/simonpasquier/http_log_console/pkg/atime"
 )
 
-// StatsWorker aggregates the number of hits over the given interval
-type StatsWorker struct {
-	logger Logger
-	// total number of hits
-	totalHits int
-	// the number of hits broken down by status code
-	statusHits []int
-	// the number of hits broken down by section
-	sectionHits map[string]int
-	// interval (in seconds) at which statistics are emitted
-	interval int
-	// channel for receiving the Hit values
-	in chan *Hit
-	// channel for sending out the statistics
-	out chan []string
-	// channel indicating that the application is done
-	done <-chan struct{}
-}
-
-// the following code comes from https://groups.google.com/d/msg/golang-nuts/FT7cjmcL7gw/Gj4_aEsE_IsJ
+// the following code comes from [1] because Golang has no built-in function
+// for sorting maps by value.
+// [1] https://groups.google.com/d/msg/golang-nuts/FT7cjmcL7gw/Gj4_aEsE_IsJ
+//
 // A data structure to hold a key/value pair.
 type Pair struct {
 	Key   string
@@ -64,6 +48,26 @@ func sortMapByValue(m map[string]int) PairList {
 	return p
 }
 
+// StatsWorker aggregates the number of hits over the given interval
+type StatsWorker struct {
+	// total number of hits
+	totalHits int
+	// the number of hits broken down by status code
+	statusHits []int
+	// the number of hits broken down by section
+	sectionHits map[string]int
+	// interval (in seconds) at which statistics are emitted
+	interval int
+	// channel for receiving the Hit values
+	in chan *Hit
+	// channel for sending out the statistics
+	out chan []string
+	// channel indicating that the application is done
+	done   <-chan struct{}
+	logger Logger
+}
+
+// Returns a new instance of StatsWorker
 func NewStatsWorker(interval int, done <-chan struct{}, logger Logger) *StatsWorker {
 	in := make(chan *Hit)
 	out := make(chan []string)
@@ -125,18 +129,19 @@ type Clocker interface {
 	Now() uint64
 }
 
+// Implements a monitonic clock
 type MonoClocker struct{}
 
 func (MonoClocker) Now() uint64 {
 	return atime.NanoTime()
 }
 
-// CircularCounter counts values over a period in 1-second buckets
+// CircularCounter counts values by 1-second buckets
 type CircularCounter struct {
-	clocker      Clocker
 	buckets      []int
 	currentIndex int
 	currentTime  uint64
+	clocker      Clocker
 }
 
 func NewCircularCounter(window int, clocker Clocker) *CircularCounter {
@@ -187,10 +192,10 @@ func (c *CircularCounter) Sum() int {
 	return sum
 }
 
-// AlertWorker detects if the hits count reaches a predefined threshold
+// AlertWorker detects if the hits count crosses a predefined threshold and
+// emits alerts when it is the case
 type AlarmWorker struct {
-	logger Logger
-	// the number of hits per second
+	// stores the number of hits per second
 	counter *CircularCounter
 	// threshold value
 	threshold int
@@ -201,9 +206,11 @@ type AlarmWorker struct {
 	// channel for sending out the alerts
 	out chan string
 	// channel indicating that the application is done
-	done <-chan struct{}
+	done   <-chan struct{}
+	logger Logger
 }
 
+// Returns a new instance of AlarmWorker
 func NewAlarmWorker(window int, threshold int, done <-chan struct{}, logger Logger) *AlarmWorker {
 	in := make(chan *Hit)
 	out := make(chan string)

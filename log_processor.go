@@ -45,7 +45,7 @@ func NewLogProcessor(filename string, logger Logger) (*LogProcessor, error) {
 // Reads the HTTP log lines and sends Hit values to the out channel
 func (l *LogProcessor) Run(out chan<- *Hit, done <-chan struct{}) error {
 	defer l.stream.Cleanup()
-	clf := regexp.MustCompile("\\[(?P<timestamp>[^]]+)\\] \"(?P<method>\\S+) (?P<uri>\\S+) [^\"]+\" (?P<status>\\d+)")
+	clf := regexp.MustCompile("\\[([^]]+)\\] \"(\\S+) (\\S+) [^\"]+\" (\\d+)")
 
 	for {
 		select {
@@ -55,7 +55,6 @@ func (l *LogProcessor) Run(out chan<- *Hit, done <-chan struct{}) error {
 				l.logger.Printf("no match found for %s", line.Text)
 				continue
 			}
-			// TODO: configurable time format
 			status, _ := strconv.Atoi(matches[4])
 			timestamp, err := time.Parse("02/Jan/2006:15:04:05 -0700", matches[1])
 			if err != nil {
