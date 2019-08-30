@@ -58,7 +58,12 @@ func main() {
 
 	// kick off the processing of the logs
 	hits := make(chan *Hit)
-	go logProcessor.Run(hits, done)
+	go func() {
+		err := logProcessor.Run(hits, done)
+		if err != nil {
+			logger.Fatalln(err)
+		}
+	}()
 
 	// dispatch the hits to all the workers
 	statsWorker := NewStatsWorker(*interval, done, logger)
@@ -71,7 +76,12 @@ func main() {
 	}()
 
 	// finally display the UI
-	go DrawUi(statsWorker.out, alarmWorker.out, done, logger)
+	go func() {
+		err := DrawUi(statsWorker.out, alarmWorker.out, done, logger)
+		if err != nil {
+			logger.Fatalln(err)
+		}
+	}()
 
 	// wait forever
 	<-done
