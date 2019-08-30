@@ -12,7 +12,8 @@
 package main
 
 import (
-	ui "github.com/gizak/termui"
+	ui "github.com/gizak/termui/v3"
+	"github.com/gizak/termui/v3/widgets"
 )
 
 func DrawUi(stat chan []string, alert chan string, done chan struct{}, logger Logger) error {
@@ -21,47 +22,40 @@ func DrawUi(stat chan []string, alert chan string, done chan struct{}, logger Lo
 	}
 	defer ui.Close()
 
-	sl := ui.NewList()
-	sl.Items = []string{}
-	sl.BorderLabel = "Statistics"
-	sl.Height = 40
-	sl.Width = 40
-	sl.X = 0
-	sl.Y = 0
+	sl := widgets.NewList()
+	sl.Rows = []string{}
+	sl.Title = "Statistics"
+	sl.SetRect(0, 0, 40, 40)
 
-	al := ui.NewList()
-	al.Items = []string{}
-	al.BorderLabel = "Alerts"
-	al.Height = 40
-	al.Width = 120
-	al.X = 41
-	al.Y = 0
-
-	ui.Handle("/sys/kbd/q", func(ui.Event) {
-		// tear down all goroutines
-		close(done)
-		ui.StopLoop()
-	})
+	al := widgets.NewList()
+	al.Rows = []string{}
+	al.Title = "Alerts"
+	al.SetRect(41, 0, 81, 120)
 
 	ui.Render(sl, al)
 
-	update := func() {
+	go func() {
 		for {
 			select {
 			case stats := <-stat:
-				sl.Items = stats
+				sl.Rows = stats
 				ui.Render(sl, al)
 			case alert := <-alert:
-				al.Items = append([]string{alert}, al.Items...)
+				al.Rows = append([]string{alert}, al.Rows...)
 				ui.Render(sl, al)
 			case <-done:
 				return
 			}
 		}
+	}()
+
+	uiEvents := ui.PollEvents()
+	for {
+		e := <-uiEvents
+		switch e.ID {
+		case "q", "<C-c>":
+			close(done)
+			return nil
+		}
 	}
-
-	go update()
-	ui.Loop()
-
-	return nil
 }
