@@ -3,10 +3,10 @@ Monitor HTTP access logs in your terminal.
 Build
 =====
 
+Requires Go >= 1.11 as it uses Go modules.
+
 ```
-$ go get github.com/tools/godep
-$ godep go test
-$ godep go build
+$ go build .
 ```
 
 Run
